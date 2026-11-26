@@ -33,3 +33,14 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - checks: manual review of the spec and the questions.
 - evidence: Handout part 3
 - risk: agent may still have misunderstood the spec or the questions
+
+
+## Entry 2
+
+- artifact: `tests/acceptance/**`
+- tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-26
+- prompts: prompts/part4.md
+- review: Read the agent output and quickly verified that the tests cover the rules in the spec. 
+- checks: ran the tests against the backend and verified that they failed as expected.
+- evidence: Handout part 4
+- risk: I might have missed some tests that do not cover the rules, or that the agent misunderstood the spec and wrote tests that do not actually test the rules.
