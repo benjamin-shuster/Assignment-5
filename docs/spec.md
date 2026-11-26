@@ -17,23 +17,23 @@ There are no user accounts. A booking records the name the person typed.
 
 **Rooms.** The backend has exactly these four rooms. They never change.
 
-| id | name | capacity |
-|---|---|---|
-| 1 | Quiet Room A | 2 |
-| 2 | Quiet Room B | 2 |
-| 3 | Group Room C | 6 |
-| 4 | Group Room D | 8 |
+| id  | name         | capacity |
+| --- | ------------ | -------- |
+| 1   | Quiet Room A | 2        |
+| 2   | Quiet Room B | 2        |
+| 3   | Group Room C | 6        |
+| 4   | Group Room D | 8        |
 
 **Bookings.** A booking has these fields.
 
-| Field | Type | Meaning |
-|---|---|---|
-| `id` | integer | Assigned by the backend. No two current bookings share an id. |
-| `room_id` | integer | One of the room ids above. |
-| `date` | string | The day, as `YYYY-MM-DD`, for example `2031-03-14`. |
-| `start` | string | Start time, as `HH:MM` in 24-hour time, for example `09:30`. |
-| `end` | string | End time, in the same format. |
-| `booked_by` | string | The name as typed, with leading and trailing whitespace removed. |
+| Field       | Type    | Meaning                                                          |
+| ----------- | ------- | ---------------------------------------------------------------- |
+| `id`        | integer | Assigned by the backend. No two current bookings share an id.    |
+| `room_id`   | integer | One of the room ids above.                                       |
+| `date`      | string  | The day, as `YYYY-MM-DD`, for example `2031-03-14`.              |
+| `start`     | string  | Start time, as `HH:MM` in 24-hour time, for example `09:30`.     |
+| `end`       | string  | End time, in the same format.                                    |
+| `booked_by` | string  | The name as typed, with leading and trailing whitespace removed. |
 
 All times are library local time. There are no time zones.
 
@@ -69,18 +69,24 @@ In a response, a **booking** is an object with exactly six fields: `id`, `room_i
 `date`, `start`, `end`, `booked_by`. A **room** is an object with exactly three fields:
 `id`, `name`, `capacity`.
 
-| Method and path | Success | Rules |
-|---|---|---|
-| `GET /api/rooms` | `200`, a list of rooms | R1 |
-| `GET /api/bookings?date=YYYY-MM-DD` | `200`, a list of bookings | R2 |
-| `GET /api/bookings?date=YYYY-MM-DD&room_id=N` | `200`, a list of bookings | R2 |
-| `POST /api/bookings` | `201`, the new booking | R3 to R7 |
-| `DELETE /api/bookings/{id}` | `204`, empty body | R8 |
+| Method and path                               | Success                   | Rules    |
+| --------------------------------------------- | ------------------------- | -------- |
+| `GET /api/rooms`                              | `200`, a list of rooms    | R1       |
+| `GET /api/bookings?date=YYYY-MM-DD`           | `200`, a list of bookings | R2       |
+| `GET /api/bookings?date=YYYY-MM-DD&room_id=N` | `200`, a list of bookings | R2       |
+| `POST /api/bookings`                          | `201`, the new booking    | R3 to R7 |
+| `DELETE /api/bookings/{id}`                   | `204`, empty body         | R8       |
 
 The body of `POST /api/bookings` is an object with five fields:
 
 ```json
-{"room_id": 1, "date": "2031-03-14", "start": "09:00", "end": "10:30", "booked_by": "Ana"}
+{
+  "room_id": 1,
+  "date": "2031-03-14",
+  "start": "09:00",
+  "end": "10:30",
+  "booked_by": "Ana"
+}
 ```
 
 ## 5. Rules
@@ -90,6 +96,7 @@ from 1 to 4.
 
 **R2. List bookings.** `GET /api/bookings` returns the bookings on the given date, ordered
 by `room_id`, then by `start`. A date with no bookings gives an empty list.
+
 - `date` is required. It must be exactly `YYYY-MM-DD` (four digits, a hyphen, two digits,
   a hyphen, two digits) and a real calendar day. Otherwise: `422 invalid_request`.
 - `room_id` is optional. When given, only that room's bookings are returned. If it is not
@@ -108,6 +115,7 @@ characters long. Otherwise: `422 invalid_name`. The booking stores and returns t
 trimmed name.
 
 **R5. Times.** All of these must hold, otherwise `422 invalid_time`:
+
 - the minutes of `start` and of `end` are `00` or `30`;
 - `start` is at or after `08:00`, and `end` is at or before `22:00`;
 - `start` is before `end`;
@@ -125,6 +133,7 @@ empty body. Its time is free to book again. If no booking has that id:
 `404 booking_not_found`. If the id is not an integer: `422 invalid_request`.
 
 **R9. Errors.**
+
 - Every error response from the endpoints in section 4 has a body with exactly two
   fields: `{"error": "<code>", "message": "<text>"}`. `error` is one of the codes in
   section 6. `message` is any short text that helps a person; tests do not check it.
@@ -139,18 +148,19 @@ sees data saved earlier in the same file.
 
 ## 6. Error codes
 
-| Status | `error` | Rule |
-|---|---|---|
-| 422 | `invalid_request` | R2, R3, R8 |
-| 422 | `invalid_name` | R4 |
-| 422 | `invalid_time` | R5 |
-| 404 | `room_not_found` | R2, R6 |
-| 404 | `booking_not_found` | R8 |
-| 409 | `overlap` | R7 |
+| Status | `error`             | Rule       |
+| ------ | ------------------- | ---------- |
+| 422    | `invalid_request`   | R2, R3, R8 |
+| 422    | `invalid_name`      | R4         |
+| 422    | `invalid_time`      | R5         |
+| 404    | `room_not_found`    | R2, R6     |
+| 404    | `booking_not_found` | R8         |
+| 409    | `overlap`           | R7         |
 
 ## 7. Decisions
 
 **Already decided by the product owner.**
+
 - P1. Dates in the past are allowed. The backend never compares a date with today.
 - P2. Capacity is shown on the page only. The backend does not ask how many people come.
 - P3. Anyone can cancel any booking. There is no login.
@@ -162,9 +172,10 @@ request they accept, accept a request they reject, or change a route, field, sta
 or error code. If you think a rule is missing, write it under "Proposed, not built" with
 your reason; it is not built in this assignment.
 
-- D1.
-
-**Proposed, not built.**
+- D1. When the daily_limit is exceeded, the backend returns a 422 status code.
+- D2. When a data type is wrong in the request, the backend returns a 422 status code.
+- D3. IDs can not be reused. A booking that is deleted keeps its id forever, and a new booking never gets that id.
+  **Proposed, not built.**
 
 - (none yet)
 
