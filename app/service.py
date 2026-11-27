@@ -17,6 +17,7 @@ _OPEN_MINUTES = 8 * 60
 _CLOSE_MINUTES = 22 * 60
 _MAX_DURATION_MINUTES = 180
 _MAX_NAME_LENGTH = 40
+_DAILY_LIMIT = 2
 _SQLITE_INT_MIN = -(1 << 63)
 _SQLITE_INT_MAX = (1 << 63) - 1
 
@@ -126,7 +127,7 @@ def list_bookings(
 
 
 def create_booking(db_path: str, payload: object) -> dict:
-    """Validate and create a booking enforcing R3..R7 in R9 precedence order."""
+    """Validate and create a booking enforcing R3..R7 and R11 in R9 precedence order."""
     # R3: Request shape, required fields, types, date and HH:MM clock format.
     if not isinstance(payload, dict):
         raise ServiceError(
@@ -204,21 +205,29 @@ def create_booking(db_path: str, payload: object) -> dict:
             "Room was not found.",
         )
 
-    # R7: Atomically enforce no overlapping booking in the same room on the same date.
-    booking = repository.create_booking(
+    # R7 & R11: Atomically enforce no overlap (R7) before daily limit (R11).
+    booking, conflict = repository.create_booking(
         db_path,
         req.room_id,
         req.date,
         req.start,
         req.end,
         trimmed_name,
+        daily_limit=_DAILY_LIMIT,
     )
-    if booking is None:
+    if conflict == "overlap":
         raise ServiceError(
             409,
             "overlap",
             "Booking overlaps an existing booking.",
         )
+    if conflict == "daily_limit":
+        raise ServiceError(
+            409,
+            "daily_limit",
+            "You already have 2 bookings on that date.",
+        )
+    assert booking is not None
     return booking
 
 

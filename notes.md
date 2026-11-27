@@ -51,3 +51,12 @@
 
 - Did not edit `docs/spec.md` or implement R11 in `app/`.
 - Did not modify `frontend/`, `tests/conftest.py`, or `tools/`.
+
+## R11: Daily limit (`app/repository.py`, `app/service.py`)
+
+- Enforced R11 (`_DAILY_LIMIT = 2` bookings per person per date across all rooms) inside the same `BEGIN IMMEDIATE` transaction as R7 in `app/repository.py:create_booking`, preserving R9 precedence (`R3 -> R4 -> R5 -> R6 -> R7 -> R11`) and preventing concurrent requests from exceeding the daily limit.
+- Matched `booked_by` using `.strip().casefold()` so trimmed whitespace and upper/lower case differences count as the same person (consistent with R4/R11), and mapped `"daily_limit"` rejections to `ServiceError(409, "daily_limit", ...)` in `app/service.py`.
+
+### Not in this change
+
+- Did not modify `docs/spec.md`, `frontend/`, `tests/acceptance/`, `tests/conftest.py`, or `tools/`.

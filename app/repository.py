@@ -139,8 +139,9 @@ def create_booking(
     start: str,
     end: str,
     booked_by: str,
-) -> dict | None:
-    """Atomically check overlap and insert a booking, returning None on overlap."""
+    daily_limit: int = 2,
+) -> tuple[dict | None, str | None]:
+    """Atomically check overlap and daily limit, then insert a booking."""
     with _connect(db_path, immediate=True) as conn:
         overlap = conn.execute(
             """
@@ -153,7 +154,22 @@ def create_booking(
         ).fetchone()
         if overlap is not None:
             conn.execute("ROLLBACK")
-            return None
+            return None, "overlap"
+
+        rows = conn.execute(
+            "SELECT booked_by FROM bookings WHERE date = ?",
+            (date,),
+        ).fetchall()
+        normalized_name = booked_by.strip().casefold()
+        same_person_count = sum(
+            1
+            for row in rows
+            if row["booked_by"].strip().casefold() == normalized_name
+        )
+        if same_person_count >= daily_limit:
+            conn.execute("ROLLBACK")
+            return None, "daily_limit"
+
         cursor = conn.execute(
             """
             INSERT INTO bookings (room_id, date, start, end, booked_by)
@@ -162,14 +178,17 @@ def create_booking(
             (room_id, date, start, end, booked_by),
         )
         booking_id = cursor.lastrowid
-    return {
-        "id": booking_id,
-        "room_id": room_id,
-        "date": date,
-        "start": start,
-        "end": end,
-        "booked_by": booked_by,
-    }
+    return (
+        {
+            "id": booking_id,
+            "room_id": room_id,
+            "date": date,
+            "start": start,
+            "end": end,
+            "booked_by": booked_by,
+        },
+        None,
+    )
 
 
 def delete_booking(db_path: str, booking_id: int) -> bool:

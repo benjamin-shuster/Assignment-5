@@ -67,7 +67,7 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - evidence: Handout part 6
 - risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
 
-## Entry 4
+## Entry 5
 
 - artifact: `app/main.py`, `app/routes.py`,
 - tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
@@ -76,3 +76,13 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - checks: ran the tests and verified the implementation works as expected.
 - evidence: Handout part 6
 - risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
+
+## Entry 6
+
+- artifact: `app/repository.py`, `app/service.py`
+- tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
+- prompts: prompts/part8-r11.md
+- review: Verified `create_booking` in `app/repository.py` and `app/service.py` enforces the 2-booking-per-person-per-date limit across all rooms using `.strip().casefold()` inside the `BEGIN IMMEDIATE` transaction after R7 overlap, preserving R9 precedence (`R3, R4, R5, R6, R7, R11`) and returning `409 daily_limit`.
+- checks: `python tools/check_layers.py` passed (`L1 to L5 hold`); `python -m pytest -q` passed (`134 passed in 2.41s`).
+- evidence: `docs/spec.md` (R11, R9, section 6), `tests/acceptance/test_r11_daily_limit.py`, Handout part 8
+- risk: No dedicated concurrency test exercises simultaneous requests racing past the R11 limit, though enforcement shares the atomic `BEGIN IMMEDIATE` transaction with R7.
