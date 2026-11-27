@@ -41,3 +41,13 @@
 - Did not implement `daily_limit` / R11 (absent from `docs/spec.md` sections 1–6).
 - Did not add authentication, past-date checks, or room capacity enforcement (excluded by P1–P3).
 - Did not modify `frontend/`, `tests/acceptance/`, `tests/conftest.py`, or `tools/`.
+
+## Acceptance tests for R11 (`tests/acceptance/test_r11_daily_limit.py`)
+
+- Created `tests/acceptance/test_r11_daily_limit.py` with four `test_r11_...` tests using the `client` fixture from `tests/conftest.py`: third booking on one date rejected with `409 daily_limit` and not saved, case-insensitive and whitespace-trimmed name matching, cancelling one of two bookings allowing a new booking, and independence across dates and different names.
+- Confirmed with the user before writing the test file because `docs/spec.md` does not yet define R11 and section 7 D1 states `422`; proceeded with `409 daily_limit` without editing `docs/spec.md` per user choice.
+
+### Not in this change
+
+- Did not edit `docs/spec.md` or implement R11 in `app/`.
+- Did not modify `frontend/`, `tests/conftest.py`, or `tools/`.
