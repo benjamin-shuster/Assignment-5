@@ -44,3 +44,14 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - checks: ran the tests against the backend and verified that they failed as expected.
 - evidence: Handout part 4
 - risk: I might have missed some tests that do not cover the rules, or that the agent misunderstood the spec and wrote tests that do not actually test the rules.
+
+## Entry 3
+
+- artifact:  `app/repository.py`
+- tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
+- prompts: prompts/buildtask1.md
+- review: Read the agent output and test the implementation.
+- checks: ran the tests and verified the implementation works as expected.
+- evidence: Handout part 6
+- risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
+- followup: I needed to fix permissions because the settings I set up for the final project also applied here. As A result, the agent was unable to run the tests. 
