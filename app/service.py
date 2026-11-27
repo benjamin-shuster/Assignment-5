@@ -17,6 +17,8 @@ _OPEN_MINUTES = 8 * 60
 _CLOSE_MINUTES = 22 * 60
 _MAX_DURATION_MINUTES = 180
 _MAX_NAME_LENGTH = 40
+_SQLITE_INT_MIN = -(1 << 63)
+_SQLITE_INT_MAX = (1 << 63) - 1
 
 
 def _validate_date(value: object) -> str:
@@ -38,15 +40,35 @@ def _validate_date(value: object) -> str:
     return value
 
 
-def _parse_int_str(raw: str, field_name: str) -> int:
-    """Parse a strict base-10 integer string or raise 422 invalid_request."""
+def _parse_bounded_int(raw: str) -> int | None:
+    """Parse a base-10 integer string, returning None if outside 64-bit SQLite range."""
+    negative = raw.startswith("-")
+    digits = (raw[1:] if negative else raw).lstrip("0") or "0"
+    if len(digits) > 19:
+        return None
+    value = int(f"-{digits}" if negative and digits != "0" else digits)
+    if not (_SQLITE_INT_MIN <= value <= _SQLITE_INT_MAX):
+        return None
+    return value
+
+
+def _parse_sqlite_int_str(raw: str, field_name: str) -> int | None:
+    """Parse a strict base-10 integer string, returning None if outside 64-bit SQLite range."""
     if _INT_RE.fullmatch(raw) is None:
         raise ServiceError(
             422,
             "invalid_request",
             f"{field_name} must be an integer.",
         )
-    return int(raw)
+    return _parse_bounded_int(raw)
+
+
+def parse_json_int(raw: str) -> int:
+    """Parse JSON integer tokens safely without triggering int_max_str_digits ValueError."""
+    value = _parse_bounded_int(raw)
+    if value is not None:
+        return value
+    return (_SQLITE_INT_MIN - 1) if raw.startswith("-") else (_SQLITE_INT_MAX + 1)
 
 
 def _parse_clock_minutes(value: object, field_name: str) -> int:
@@ -92,12 +114,12 @@ def list_bookings(
 
     room_id_int: int | None = None
     if room_id is not None:
-        room_id_int = _parse_int_str(room_id, "room_id")
-        if not repository.room_exists(db_path, room_id_int):
+        room_id_int = _parse_sqlite_int_str(room_id, "room_id")
+        if room_id_int is None or not repository.room_exists(db_path, room_id_int):
             raise ServiceError(
                 404,
                 "room_not_found",
-                f"Room {room_id_int} was not found.",
+                "Room was not found.",
             )
 
     return repository.list_bookings(db_path, valid_date, room_id_int)
@@ -173,24 +195,17 @@ def create_booking(db_path: str, payload: object) -> dict:
         )
 
     # R6: Room exists.
-    if not repository.room_exists(db_path, req.room_id):
+    if not (_SQLITE_INT_MIN <= req.room_id <= _SQLITE_INT_MAX) or not repository.room_exists(
+        db_path, req.room_id
+    ):
         raise ServiceError(
             404,
             "room_not_found",
-            f"Room {req.room_id} was not found.",
+            "Room was not found.",
         )
 
-    # R7: No overlapping booking in the same room on the same date.
-    if repository.has_overlap(
-        db_path, req.room_id, req.date, req.start, req.end
-    ):
-        raise ServiceError(
-            409,
-            "overlap",
-            "Booking overlaps an existing booking.",
-        )
-
-    return repository.create_booking(
+    # R7: Atomically enforce no overlapping booking in the same room on the same date.
+    booking = repository.create_booking(
         db_path,
         req.room_id,
         req.date,
@@ -198,14 +213,21 @@ def create_booking(db_path: str, payload: object) -> dict:
         req.end,
         trimmed_name,
     )
+    if booking is None:
+        raise ServiceError(
+            409,
+            "overlap",
+            "Booking overlaps an existing booking.",
+        )
+    return booking
 
 
 def cancel_booking(db_path: str, raw_booking_id: str) -> None:
     """Cancel an existing booking by integer id (R8)."""
-    booking_id = _parse_int_str(raw_booking_id, "id")
-    if not repository.delete_booking(db_path, booking_id):
+    booking_id = _parse_sqlite_int_str(raw_booking_id, "id")
+    if booking_id is None or not repository.delete_booking(db_path, booking_id):
         raise ServiceError(
             404,
             "booking_not_found",
-            f"Booking {booking_id} was not found.",
+            "Booking was not found.",
         )

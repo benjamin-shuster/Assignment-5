@@ -13,14 +13,42 @@ FIXED_ROOMS: tuple[tuple[int, str, int], ...] = (
     (4, "Group Room D", 8),
 )
 
+_SQLITE_INT_MIN = -(1 << 63)
+_SQLITE_INT_MAX = (1 << 63) - 1
+
+
+def _is_sqlite_int(value: int) -> bool:
+    """Return True if value fits in a signed 64-bit SQLite INTEGER."""
+    return _SQLITE_INT_MIN <= value <= _SQLITE_INT_MAX
+
 
 @contextlib.contextmanager
-def _connect(db_path: str) -> Iterator[sqlite3.Connection]:
+def _connect(
+    db_path: str, *, immediate: bool = False
+) -> Iterator[sqlite3.Connection]:
     """Open a fresh SQLite connection for a single repository call."""
-    with contextlib.closing(sqlite3.connect(db_path)) as conn:
+    conn = sqlite3.connect(
+        db_path,
+        timeout=30.0,
+        isolation_level=None if immediate else "",
+    )
+    try:
         conn.row_factory = sqlite3.Row
-        with conn:
-            yield conn
+        if immediate:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                yield conn
+                if conn.in_transaction:
+                    conn.execute("COMMIT")
+            except BaseException:
+                if conn.in_transaction:
+                    conn.execute("ROLLBACK")
+                raise
+        else:
+            with conn:
+                yield conn
+    finally:
+        conn.close()
 
 
 def init_db(db_path: str) -> None:
@@ -64,6 +92,8 @@ def list_rooms(db_path: str) -> list[dict]:
 
 def room_exists(db_path: str, room_id: int) -> bool:
     """Return True if a room with the given id exists."""
+    if not _is_sqlite_int(room_id):
+        return False
     with _connect(db_path) as conn:
         row = conn.execute(
             "SELECT 1 FROM rooms WHERE id = ?",
@@ -76,6 +106,8 @@ def list_bookings(
     db_path: str, date: str, room_id: int | None = None
 ) -> list[dict]:
     """Return bookings for a date (and optional room), ordered by room_id then start."""
+    if room_id is not None and not _is_sqlite_int(room_id):
+        return []
     with _connect(db_path) as conn:
         if room_id is None:
             rows = conn.execute(
@@ -100,12 +132,17 @@ def list_bookings(
     return [dict(row) for row in rows]
 
 
-def has_overlap(
-    db_path: str, room_id: int, date: str, start: str, end: str
-) -> bool:
-    """Return True if any booking in the same room and date overlaps [start, end)."""
-    with _connect(db_path) as conn:
-        row = conn.execute(
+def create_booking(
+    db_path: str,
+    room_id: int,
+    date: str,
+    start: str,
+    end: str,
+    booked_by: str,
+) -> dict | None:
+    """Atomically check overlap and insert a booking, returning None on overlap."""
+    with _connect(db_path, immediate=True) as conn:
+        overlap = conn.execute(
             """
             SELECT 1
             FROM bookings
@@ -114,19 +151,9 @@ def has_overlap(
             """,
             (room_id, date, end, start),
         ).fetchone()
-    return row is not None
-
-
-def create_booking(
-    db_path: str,
-    room_id: int,
-    date: str,
-    start: str,
-    end: str,
-    booked_by: str,
-) -> dict:
-    """Insert a booking and return the created six-field booking dict."""
-    with _connect(db_path) as conn:
+        if overlap is not None:
+            conn.execute("ROLLBACK")
+            return None
         cursor = conn.execute(
             """
             INSERT INTO bookings (room_id, date, start, end, booked_by)
@@ -147,6 +174,8 @@ def create_booking(
 
 def delete_booking(db_path: str, booking_id: int) -> bool:
     """Delete a booking by id and return True if a row was removed."""
+    if not _is_sqlite_int(booking_id):
+        return False
     with _connect(db_path) as conn:
         cursor = conn.execute(
             "DELETE FROM bookings WHERE id = ?",

@@ -37,7 +37,10 @@ def get_bookings(
 async def post_booking(request: Request) -> JSONResponse:
     """Create a booking from a JSON request body (R3..R7)."""
     try:
-        payload = await request.json()
+        raw_body = await request.body()
+        payload = json.loads(
+            raw_body.decode("utf-8"), parse_int=service.parse_json_int
+        )
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         raise ServiceError(
             422,
