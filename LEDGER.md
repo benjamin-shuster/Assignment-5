@@ -67,3 +67,12 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - evidence: Handout part 6
 - risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
 
+## Entry 4
+
+- artifact: `app/main.py`, `app/routes.py`,
+- tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
+- prompts: prompts/buildtask3.md
+- review: Read the agent output and test the implementation.
+- checks: ran the tests and verified the implementation works as expected.
+- evidence: Handout part 6
+- risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
