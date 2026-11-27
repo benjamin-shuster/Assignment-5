@@ -29,37 +29,35 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - artifact: `docs/spec.md` section 7
 - tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-26
 - prompts: prompts/part3.md
-- review: Read the output questions and the spec and validated that the questions are not already answered in the spec. 
+- review: Read the output questions and the spec and validated that the questions are not already answered in the spec.
 - checks: manual review of the spec and the questions.
 - evidence: Handout part 3
 - risk: agent may still have misunderstood the spec or the questions
-
 
 ## Entry 2
 
 - artifact: `tests/acceptance/**`
 - tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-26
 - prompts: prompts/part4.md
-- review: Read the agent output and quickly verified that the tests cover the rules in the spec. 
+- review: Read the agent output and quickly verified that the tests cover the rules in the spec.
 - checks: ran the tests against the backend and verified that they failed as expected.
 - evidence: Handout part 4
 - risk: I might have missed some tests that do not cover the rules, or that the agent misunderstood the spec and wrote tests that do not actually test the rules.
 
 ## Entry 3
 
-- artifact:  `app/repository.py`
+- artifact: `app/repository.py`
 - tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
 - prompts: prompts/buildtask1.md
 - review: Read the agent output and test the implementation.
 - checks: ran the tests and verified the implementation works as expected.
 - evidence: Handout part 6
 - risk: The agent may have misunderstood the spec and implemented something that does not actually meet the requirements.
-- followup: I needed to fix permissions because the settings I set up for the final project also applied here. As A result, the agent was unable to run the tests. 
-
+- followup: I needed to fix permissions because the settings I set up for the final project also applied here. As A result, the agent was unable to run the tests.
 
 ## Entry 4
 
-- artifact:  `app/service.py`, `app/models.py`
+- artifact: `app/service.py`, `app/models.py`
 - tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
 - prompts: prompts/buildtask2.md
 - review: Read the agent output and test the implementation.
@@ -86,3 +84,23 @@ risk:      no test checks the endpoint under load; not needed for this change.
 - checks: `python tools/check_layers.py` passed (`L1 to L5 hold`); `python -m pytest -q` passed (`134 passed in 2.41s`).
 - evidence: `docs/spec.md` (R11, R9, section 6), `tests/acceptance/test_r11_daily_limit.py`, Handout part 8
 - risk: No dedicated concurrency test exercises simultaneous requests racing past the R11 limit, though enforcement shares the atomic `BEGIN IMMEDIATE` transaction with R7.
+
+## Entry 7
+
+- artifact: `docs/adr/0001-overlap.md`
+- tool: vs code autocomplete, 2026-11-27
+- prompts: `prompts/part9.md`
+- review: Read the ADR and verified that it accurately describes the decision to use a database transaction with a `BEGIN IMMEDIATE` statement to lock the database for writing during the booking process.
+- checks: manual review of the ADR and the spec.
+- evidence: Handout part 9
+- risk: The ADR may not accurately reflect the decision made, or may not be clear enough for future reference.
+
+## Entry 8
+
+- artifact: `test_old_format.py`
+- tool: Antigravity main agent, Gemini 4 Hydrogen, 2026-11-27
+- prompts: `prompts/part10.md`
+- review: Read the agent output and verified that the tests cover the legacy parser's behavior, including normal cases, odd outputs, and exceptions raised. Each test is named `test_legacy_...` and has a comment `# BUG: pinned, not fixed` above it if it pins a wrong result.
+- checks: ran the tests and verified that they pass or fail as expected, and that the pinned tests accurately reflect the legacy parser's behavior.
+- evidence: Handout part 10
+- risk: The agent may have misunderstood the legacy parser's behavior and written tests that do not accurately cover it, or may have missed some cases.

@@ -9,6 +9,7 @@
     ],
     "deny": [
       "write_file(frontend/)",
+      "write_file(tests/acceptance/)",
       "command(git push)",
       "command(rm -rf)"
     ]
